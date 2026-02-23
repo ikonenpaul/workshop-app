@@ -3,118 +3,255 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Workshop Gruppen-Check</title>
-    <!-- Externe Bibliotheken -->
+    <title>Workshop | Themen Findung</title>
+    
+    <!-- Moderne Google Schriftart: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Supabase Library -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
     <style>
         :root {
-            --primary: #3498db;
-            --secondary: #2ecc71;
-            --bg: #f4f7f6;
-            --text: #2c3e50;
-        }
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--bg);
-            color: var(--text);
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            justify-content: center;
-        }
-        .container {
-            max-width: 700px;
-            width: 100%;
-            background: white;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        }
-        h1 { color: var(--primary); text-align: center; margin-top: 0; }
-        .hidden { display: none; }
-        
-        /* Quiz Styles */
-        .question-block {
-            margin-bottom: 25px;
-            padding: 15px;
-            border-bottom: 1px solid #eee;
-        }
-        .question-text {
-            font-weight: bold;
-            margin-bottom: 10px;
-            display: block;
-        }
-        .options {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 10px;
-        }
-        .option {
-            text-align: center;
-            flex: 1;
-        }
-        .scale-labels {
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.75em;
-            color: #7f8c8d;
-            margin-top: 5px;
+            /* Farbpalette */
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --primary: #4f46e5;      /* Modernes Indigo */
+            --primary-hover: #4338ca;
+            --primary-light: #e0e7ff;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --border-color: #e2e8f0;
+            --success: #10b981;
+            --radius: 20px;
         }
 
-        /* Form & Buttons */
+        * { 
+            box-sizing: border-box; 
+            -webkit-tap-highlight-color: transparent; 
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+            background: var(--card-bg);
+            padding: 40px;
+            border-radius: var(--radius);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.03), 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        h1 {
+            font-weight: 700;
+            font-size: 28px;
+            letter-spacing: -0.02em;
+            margin-top: 0;
+            margin-bottom: 8px;
+            text-align: center;
+            color: var(--text-main);
+        }
+
+        p.subtitle {
+            text-align: center;
+            color: var(--text-muted);
+            margin-bottom: 32px;
+            font-size: 15px;
+            line-height: 1.5;
+        }
+
+        .hidden { display: none !important; }
+
+        /* Modernes Input-Feld */
         input[type="text"] {
             width: 100%;
-            padding: 12px;
-            margin: 15px 0;
-            border: 1px solid #ddd;
-            border-radius: 6px;
+            background: var(--bg-color);
+            border: 2px solid var(--border-color);
+            border-radius: 14px;
+            padding: 16px 20px;
+            color: var(--text-main);
             font-size: 16px;
-            box-sizing: border-box;
+            font-family: inherit;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            margin-bottom: 24px;
         }
+
+        input[type="text"]::placeholder {
+            color: #94a3b8;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: var(--primary);
+            background: #ffffff;
+            box-shadow: 0 0 0 4px var(--primary-light);
+        }
+
+        /* Premium Button */
         button {
+            width: 100%;
             background: var(--primary);
             color: white;
             border: none;
-            padding: 15px;
-            border-radius: 6px;
-            cursor: pointer;
+            padding: 18px;
+            border-radius: 14px;
+            font-weight: 600;
             font-size: 16px;
-            width: 100%;
-            transition: background 0.2s;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
         }
-        button:hover { background: #2980b9; }
 
-        /* Progress & Loading */
-        .progress-container {
-            height: 8px;
-            background: #eee;
-            border-radius: 4px;
-            margin-bottom: 25px;
+        button:hover {
+            background: var(--primary-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(79, 70, 229, 0.35);
+        }
+
+        button:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 8px rgba(79, 70, 229, 0.2);
+        }
+
+        /* Frage-Block Animation */
+        .question-card {
+            margin-bottom: 36px;
+            animation: fadeIn 0.5s ease forwards;
+            opacity: 0;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .question-label {
+            font-weight: 600;
+            font-size: 16px;
+            display: block;
+            margin-bottom: 16px;
+            line-height: 1.5;
+            color: var(--text-main);
+        }
+
+        /* Moderne interaktive Kacheln (Rating Tiles) */
+        .rating-grid {
+            display: flex;
+            gap: 8px;
+            justify-content: space-between;
+        }
+
+        .rating-tile {
+            flex: 1;
+            position: relative;
+        }
+
+        .rating-tile input {
+            position: absolute;
+            opacity: 0;
+            cursor: pointer;
+            height: 0; width: 0;
+        }
+
+        .tile-content {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 52px;
+            background: var(--bg-color);
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 16px;
+            color: var(--text-muted);
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .rating-tile:hover .tile-content {
+            background: var(--border-color);
+            color: var(--text-main);
+        }
+
+        .rating-tile input:checked + .tile-content {
+            background: var(--primary-light);
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: scale(1.05);
+            box-shadow: 0 4px 10px rgba(79, 70, 229, 0.15);
+        }
+
+        .tile-labels {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-muted);
+        }
+
+        /* Progress Bar */
+        .progress-wrap {
+            height: 6px;
+            background: var(--bg-color);
+            border-radius: 3px;
+            margin-bottom: 32px;
             overflow: hidden;
         }
-        .progress-bar {
+        
+        .progress-fill {
             height: 100%;
-            background: var(--secondary);
+            background: var(--primary);
             width: 0%;
-            transition: width 0.3s;
+            transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 3px;
         }
-        .loader {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid var(--primary);
+
+        /* Modern Spinner */
+        .spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid var(--border-color);
+            border-top-color: var(--primary);
             border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 20px auto;
+            animation: spin 1s cubic-bezier(0.5, 0.1, 0.4, 0.9) infinite;
+            margin: 30px auto;
         }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .result-card {
-            background: #e8f6ef;
-            border: 2px solid var(--secondary);
-            padding: 20px;
-            border-radius: 8px;
+
+        @keyframes spin { 
+            to { transform: rotate(360deg); } 
+        }
+
+        /* Ergebnis-Box */
+        .result-box {
+            background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+            border: 1px solid #bbf7d0;
+            padding: 40px 20px;
+            border-radius: var(--radius);
             text-align: center;
             margin-top: 20px;
+        }
+
+        #groupName {
+            color: var(--success);
+            font-size: 28px;
+            font-weight: 800;
+            margin: 10px 0 0 0;
+            letter-spacing: -0.02em;
         }
     </style>
 </head>
@@ -124,92 +261,91 @@
     <!-- VIEW 1: LOGIN -->
     <div id="view-login">
         <h1>Workshop Check-In</h1>
-        <p style="text-align: center;">Gib deinen Namen ein, um die Themen-Zuweisung zu starten.</p>
-        <input type="text" id="studentName" placeholder="Dein Vorname / Name">
-        <button onclick="startApp()">Starten</button>
+        <p class="subtitle">Finde heraus, welches Thema am besten zu dir passt. Deine Angaben helfen uns bei der Gruppeneinteilung.</p>
+        <input type="text" id="studentName" placeholder="Wie heißt du?" autocomplete="off">
+        <button onclick="startApp()">Jetzt starten</button>
     </div>
 
     <!-- VIEW 2: QUIZ -->
     <div id="view-app" class="hidden">
-        <div class="progress-container"><div id="progressBar" class="progress-bar"></div></div>
+        <div class="progress-wrap"><div id="progressBar" class="progress-fill"></div></div>
         <div id="questionContainer"></div>
         <button id="nextBtn" onclick="processStep()">Weiter</button>
     </div>
 
-    <!-- VIEW 3: WAITING -->
-    <div id="view-waiting" class="hidden">
-        <h1>Warten auf die anderen...</h1>
-        <div style="text-align: center; padding: 20px;">
-            <p id="statusMsg">Deine Antworten wurden sicher gespeichert.</p>
-            <div class="loader"></div>
-            <p id="countDisplay" style="font-weight: bold; color: var(--primary);">Lade Teilnehmerstatus...</p>
-        </div>
+    <!-- VIEW 3: WAITING ROOM -->
+    <div id="view-waiting" class="hidden" style="text-align: center;">
+        <h1>Daten synchronisieren...</h1>
+        <p class="subtitle">Wir werten die Antworten aller Teilnehmer aus, um die optimalen Gruppen zu berechnen.</p>
+        <div class="spinner"></div>
+        <p id="countDisplay" style="color: var(--primary); font-weight: 600; font-size: 16px;"></p>
     </div>
 
     <!-- VIEW 4: RESULT -->
     <div id="view-result" class="hidden">
-        <h1>Dein Ergebnis</h1>
-        <div class="result-card">
-            <p>Du bist in der Gruppe:</p>
-            <h2 id="groupName" style="font-size: 2em; color: #27ae60; margin: 10px 0;">Berechnung läuft...</h2>
+        <h1>Dein Platz ist reserviert!</h1>
+        <div class="result-box">
+            <span style="font-size: 13px; font-weight: 600; color: #166534; text-transform: uppercase; letter-spacing: 0.05em;">Zugewiesenes Thema</span>
+            <h2 id="groupName">Berechnung...</h2>
         </div>
-        <p style="text-align: center; margin-top: 20px;">Gehe nun zu deinem zugewiesenen Gruppentisch.</p>
+        <p class="subtitle" style="margin-top:24px;">Bitte begib dich nun zum entsprechenden Gruppentisch im Raum.</p>
     </div>
 </div>
 
 <script>
-    // --- SUPABASE SETUP ---
-    // Hier unbedingt deine eigenen Daten eintragen!
+    // --- KONFIGURATION (HIER DEINE DATEN EINTRAGEN!) ---
     const SUPABASE_URL = 'https://bntzsbeglcnewcqhmsva.supabase.co/'; 
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJudHpzYmVnbGNuZXdjcWhtc3ZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE4Mzg1MzAsImV4cCI6MjA4NzQxNDUzMH0.p76BhO6IWuPCTzDyHO6OXU6UXUGBH352nFhrHcVinsU';
-    const TARGET_STUDENT_COUNT = 1; // ZUM TESTEN AUF 1, FÜR WORKSHOP AUF 20+
+    const TARGET_STUDENT_COUNT = 1; // Für den Test auf 1 lassen, am Workshop-Tag anpassen!
 
     const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     const topics = [
         { id: 1, name: "Taschengeld, Geld & Management" },
-        { id: 2, name: "Freizeitgestaltung & soz. Teilhabe" },
-        { id: 3, name: "Digitalisierung & Mediennutzung" },
-        { id: 4, name: "Gesundheit & Stress im Alltag" },
-        { id: 5, name: "Soziale Gerechtigkeit & Ungleichheit" }
+        { id: 2, name: "Freizeit & Soziale Teilhabe" },
+        { id: 3, name: "Digitalisierung & Medien" },
+        { id: 4, name: "Gesundheit & Stress" },
+        { id: 5, name: "Soziale Gerechtigkeit" }
     ];
 
     const questions = [
-        { t: 1, q: "Ich möchte lernen, wie man einen Finanzplan erstellt." },
-        { t: 1, q: "Es ist wichtig zu wissen, wie Banken funktionieren." },
-        { t: 1, q: "Schüler sollten mehr über Steuern lernen." },
-        { t: 1, q: "Ich überlege genau, wofür ich mein Geld ausgebe." },
-        { t: 1, q: "Geld sparen für große Ziele fällt mir leicht." },
-        { t: 2, q: "Jeder Jugendliche sollte kostenlose Sportangebote haben." },
-        { t: 2, q: "Ich wünsche mir mehr Treffpunkte für Jugendliche." },
-        { t: 2, q: "Hobbys sollten nicht vom Geld der Eltern abhängen." },
-        { t: 2, q: "Vereine sollten für alle Menschen bezahlbar sein." },
-        { t: 2, q: "Ich verbringe meine Freizeit gerne aktiv in der Gemeinschaft." },
-        { t: 3, q: "Ich will verstehen, wie Algorithmen Social Media steuern." },
-        { t: 3, q: "Datenschutz im Internet beschäftigt mich." },
-        { t: 3, q: "KI wird meinen zukünftigen Job stark verändern." },
-        { t: 3, q: "Digitale Geräte sollten im Unterricht mehr genutzt werden." },
-        { t: 3, q: "Ich hinterfrage kritisch, was ich im Internet lese." },
-        { t: 4, q: "Der Leistungsdruck in der Schule belastet mich oft." },
-        { t: 4, q: "Ich möchte lernen, in Stresssituationen ruhig zu bleiben." },
-        { t: 4, q: "Gesunde Ernährung sollte in der Schule wichtiger sein." },
-        { t: 4, q: "Ausreichend Schlaf und Erholung sind mir wichtig." },
-        { t: 4, q: "Ich merke körperlich, wenn ich zu viel Stress habe." },
-        { t: 5, q: "Die Schere zwischen Arm und Reich ist zu groß." },
-        { t: 5, q: "Herkunft darf keinen Einfluss auf Bildungschancen haben." },
-        { t: 5, q: "Ich finde es wichtig, sich gegen Diskriminierung einzusetzen." },
-        { t: 5, q: "Reichtum sollte in einer Gesellschaft fairer verteilt werden." },
-        { t: 5, q: "Ich interessiere mich für politische Entscheidungen." }
+        { t: 1, q: "Ich möchte lernen, wie man einen Finanzplan für den Monat erstellt." },
+        { t: 1, q: "Es ist mir wichtig zu wissen, wie Banken und Zinsen funktionieren." },
+        { t: 1, q: "Ich finde, Schüler sollten mehr über Steuern und Versicherungen lernen." },
+        { t: 1, q: "Ich überlege mir genau, wofür ich mein Geld ausgebe." },
+        { t: 1, q: "Geld sparen für große Ziele fällt mir extrem leicht." },
+        { t: 2, q: "Jeder Jugendliche sollte Zugang zu kostenlosen Sportangeboten haben." },
+        { t: 2, q: "Ich wünsche mir viel mehr Treffpunkte für Jugendliche in meiner Stadt." },
+        { t: 2, q: "Hobbys sollten niemals vom Einkommen der Eltern abhängen." },
+        { t: 2, q: "Vereine sollten für absolut alle Menschen offen und bezahlbar sein." },
+        { t: 2, q: "Ich verbringe meine Freizeit sehr gerne aktiv in der Gemeinschaft." },
+        { t: 3, q: "Ich möchte verstehen, wie Algorithmen meine Social Media Feeds steuern." },
+        { t: 3, q: "Datenschutz im Internet ist ein Thema, das mich stark beschäftigt." },
+        { t: 3, q: "Künstliche Intelligenz wird meinen zukünftigen Job massiv verändern." },
+        { t: 3, q: "Digitale Geräte sollten im Unterricht viel stärker genutzt werden." },
+        { t: 3, q: "Ich hinterfrage grundsätzlich kritisch, was ich im Internet lese." },
+        { t: 4, q: "Der Leistungsdruck in der Schule belastet mich im Alltag oft." },
+        { t: 4, q: "Ich möchte Techniken lernen, um in Stresssituationen extrem ruhig zu bleiben." },
+        { t: 4, q: "Gesunde Ernährung sollte in der Schule ein viel größeres Thema sein." },
+        { t: 4, q: "Ausreichend Schlaf und Erholung sind für mich unverzichtbar." },
+        { t: 4, q: "Ich merke körperlich sehr schnell, wenn ich zu viel Stress habe." },
+        { t: 5, q: "Die Schere zwischen Arm und Reich in Deutschland ist viel zu groß." },
+        { t: 5, q: "Die Herkunft darf keinen Einfluss auf die Bildungschancen haben." },
+        { t: 5, q: "Ich finde es extrem wichtig, sich aktiv gegen Diskriminierung einzusetzen." },
+        { t: 5, q: "Reichtum sollte in einer Gesellschaft wesentlich fairer verteilt werden." },
+        { t: 5, q: "Ich interessiere mich dafür, wie politische Entscheidungen uns beeinflussen." }
     ];
 
     let currentStudentName = "";
-    let appStep = 0; // 0 = Hauptthemen, 1 = Gemischte Fragen
+    let appStep = 0; 
     let studentScores = { 1:0, 2:0, 3:0, 4:0, 5:0 };
 
     function startApp() {
-        const input = document.getElementById('studentName');
-        currentStudentName = input.value.trim();
-        if(!currentStudentName) return alert("Bitte gib deinen Namen ein!");
+        currentStudentName = document.getElementById('studentName').value.trim();
+        if(!currentStudentName) {
+            alert("Bitte gib deinen Namen ein, bevor du startest.");
+            return;
+        }
         
         document.getElementById('view-login').classList.add('hidden');
         document.getElementById('view-app').classList.remove('hidden');
@@ -218,62 +354,71 @@
 
     function renderStep0() {
         const container = document.getElementById('questionContainer');
-        container.innerHTML = "<h3>Wie wichtig sind dir diese Bereiche?</h3>";
-        topics.forEach(t => {
-            container.innerHTML += createRatingHTML(`topic_${t.id}`, t.name, t.id);
+        container.innerHTML = "<h1>Dein Fokus</h1><p class='subtitle'>Bewerte, wie relevant diese fünf Oberthemen allgemein für dich sind.</p>";
+        
+        topics.forEach((t, index) => {
+            // Kleine Verzögerung in der Animation für einen Kaskaden-Effekt
+            container.innerHTML += createTileHTML(`topic_${t.id}`, t.name, t.id, index * 0.1);
         });
         updateProgressBar(20);
     }
 
     function renderStep1() {
         const container = document.getElementById('questionContainer');
-        container.innerHTML = "<h3>Bewerte die folgenden Aussagen:</h3>";
+        container.innerHTML = "<h1>Im Detail</h1><p class='subtitle'>Bewerte nun folgende Aussagen aus deinem Alltag.</p>";
+        
         const shuffled = [...questions].sort(() => Math.random() - 0.5);
-        shuffled.forEach((q, i) => {
-            container.innerHTML += createRatingHTML(`q_${i}`, q.q, q.t);
+        shuffled.forEach((q, index) => {
+            container.innerHTML += createTileHTML(`q_${index}`, q.q, q.t, (index % 5) * 0.1);
         });
-        document.getElementById('nextBtn').innerText = "Absenden & Auswerten";
+        
+        document.getElementById('nextBtn').innerText = "Ergebnisse auswerten";
         updateProgressBar(100);
-        window.scrollTo(0,0);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
-    function createRatingHTML(name, label, topicId) {
+    function createTileHTML(inputName, label, topicId, delaySeconds) {
         return `
-            <div class="question-block">
-                <span class="question-text">${label}</span>
-                <div class="options">
+            <div class="question-card" style="animation-delay: ${delaySeconds}s">
+                <span class="question-label">${label}</span>
+                <div class="rating-grid">
                     ${[1,2,3,4,5].map(n => `
-                        <div class="option">
-                            <input type="radio" name="${name}" data-topic="${topicId}" value="${n}" required>
-                            <br><span style="font-size:0.9em">${n}</span>
-                        </div>`).join('')}
+                        <label class="rating-tile">
+                            <input type="radio" name="${inputName}" data-topic="${topicId}" value="${n}">
+                            <span class="tile-content">${n}</span>
+                        </label>
+                    `).join('')}
                 </div>
-                <div class="scale-labels">
-                    <span>unwichtig</span><span>sehr wichtig</span>
+                <div class="tile-labels">
+                    <span>Trifft nicht zu</span>
+                    <span>Trifft voll zu</span>
                 </div>
             </div>`;
     }
 
     async function processStep() {
-        const radios = document.querySelectorAll('#questionContainer input[type="radio"]:checked');
-        const required = (appStep === 0) ? topics.length : questions.length;
+        const checked = document.querySelectorAll('#questionContainer input[type="radio"]:checked');
+        const totalNeeded = (appStep === 0) ? topics.length : questions.length;
+        
+        if(checked.length < totalNeeded) {
+            alert("Bitte bewerte alle angezeigten Aussagen, um fortzufahren.");
+            return;
+        }
 
-        if(radios.length < required) return alert("Bitte alle Fragen bewerten!");
-
-        radios.forEach(r => {
-            const tId = r.getAttribute('data-topic');
-            studentScores[tId] += parseInt(r.value);
+        checked.forEach(input => {
+            const tId = input.getAttribute('data-topic');
+            studentScores[tId] = (studentScores[tId] || 0) + parseInt(input.value);
         });
 
         if(appStep === 0) {
             appStep = 1;
             renderStep1();
         } else {
-            await submitToDatabase();
+            await submitData();
         }
     }
 
-    async function submitToDatabase() {
+    async function submitData() {
         document.getElementById('view-app').classList.add('hidden');
         document.getElementById('view-waiting').classList.remove('hidden');
 
@@ -282,78 +427,101 @@
         ]);
 
         if(error) {
-            alert("Fehler beim Speichern: " + error.message);
+            console.error("Datenbank-Fehler:", error);
+            alert("Es gab ein Problem beim Speichern: " + error.message);
             return;
         }
         startPolling();
     }
 
     function startPolling() {
-        const interval = setInterval(async () => {
+        const timer = setInterval(async () => {
             const { data } = await db.from('submissions').select('*');
             if(!data) return;
 
-            document.getElementById('countDisplay').innerText = `${data.length} von ${TARGET_STUDENT_COUNT} Schülern fertig.`;
+            document.getElementById('countDisplay').innerText = `Bereits bereit: ${data.length} / ${TARGET_STUDENT_COUNT}`;
 
             if(data.length >= TARGET_STUDENT_COUNT) {
-                // Gruppenberechnung anstoßen, falls noch nicht geschehen
+                // Wenn noch keine Gruppe zugewiesen wurde, starte den Balancing-Algorithmus
                 if(!data[0].assigned_group) {
-                    await runBalancing(data);
+                    await calculateAssignments(data);
                 }
 
-                const myEntry = data.find(s => s.name === currentStudentName);
-                if(myEntry && myEntry.assigned_group) {
-                    clearInterval(interval);
-                    showResult(myEntry.assigned_group);
+                // Prüfen, ob für diesen Schüler ein Ergebnis vorliegt
+                const me = data.find(s => s.name === currentStudentName);
+                if(me && me.assigned_group) {
+                    clearInterval(timer);
+                    document.getElementById('view-waiting').classList.add('hidden');
+                    document.getElementById('view-result').classList.remove('hidden');
+                    document.getElementById('groupName').innerText = me.assigned_group;
                 }
             }
         }, 3000);
     }
 
-    async function runBalancing(all) {
-        const max = Math.ceil(all.length / 5);
+    // Der intelligente Algorithmus, um die Schüler fair und gleichmäßig zu verteilen
+    async function calculateAssignments(allStudents) {
+        const maxPerGroup = Math.ceil(allStudents.length / 5);
         
-        // Wunschliste
-        all.forEach(s => {
-            s.pref = Object.entries(s.scores).sort((a,b) => b[1]-a[1]).map(e => parseInt(e[0]));
-            s.curG = s.pref[0];
+        // 1. Präferenzliste für jeden erstellen (absteigend sortiert nach Punktzahl)
+        allStudents.forEach(s => {
+            s.pref = Object.entries(s.scores)
+                .sort((a,b) => b[1] - a[1])
+                .map(e => parseInt(e[0]));
+            s.currentGroup = s.pref[0]; // Erstmal alle in ihren Erstwunsch packen
         });
 
-        // Einfacher Ausgleich
-        for(let i=0; i<50; i++) {
-            let overflow = all.filter(s => all.filter(x => x.curG === s.curG).length > max);
-            if(overflow.length === 0) break;
+        // 2. Balancing (Ausgleichsschleife)
+        let changed = true;
+        let iterations = 0;
+        
+        while(changed && iterations < 50) {
+            changed = false;
+            iterations++;
+            
+            for(let gId = 1; gId <= 5; gId++) {
+                let members = allStudents.filter(s => s.currentGroup === gId);
+                
+                if(members.length > maxPerGroup) {
+                    let bestCandidate = null;
+                    let minLoss = Infinity;
+                    let targetG = null;
 
-            overflow.sort((a,b) => {
-                let lossA = a.scores[a.curG] - a.scores[a.pref[1]];
-                let lossB = b.scores[b.curG] - b.scores[b.pref[1]];
-                return lossA - lossB;
-            });
+                    // Finde den Schüler, dem der Wechsel in die zweit-/drittbeste Gruppe am wenigsten "Schmerzen" bereitet
+                    members.forEach(s => {
+                        for(let p=1; p < s.pref.length; p++) {
+                            let nextG = s.pref[p];
+                            // Hat die nächste Wunschgruppe noch Platz?
+                            if(allStudents.filter(st => st.currentGroup === nextG).length < maxPerGroup) {
+                                let loss = s.scores[gId] - s.scores[nextG];
+                                if(loss < minLoss) {
+                                    minLoss = loss;
+                                    bestCandidate = s;
+                                    targetG = nextG;
+                                }
+                                break;
+                            }
+                        }
+                    });
 
-            let candidate = overflow[0];
-            for(let p=1; p<5; p++) {
-                let nextG = candidate.pref[p];
-                if(all.filter(x => x.curG === nextG).length < max) {
-                    candidate.curG = nextG;
-                    break;
+                    if(bestCandidate) {
+                        bestCandidate.currentGroup = targetG;
+                        changed = true; // Wir haben etwas verschoben, also müssen wir nochmal prüfen
+                    }
                 }
             }
         }
 
-        for(let s of all) {
-            const tName = topics.find(t => t.id === s.curG).name;
-            await db.from('submissions').update({ assigned_group: tName }).eq('name', s.name);
+        // 3. Ergebnisse in die Supabase-Datenbank zurückschreiben
+        for(let s of allStudents) {
+            const topicName = topics.find(t => t.id === s.currentGroup).name;
+            await db.from('submissions').update({ assigned_group: topicName }).eq('name', s.name);
         }
     }
 
-    function showResult(group) {
-        document.getElementById('view-waiting').classList.add('hidden');
-        document.getElementById('view-result').classList.remove('hidden');
-        document.getElementById('groupName').innerText = group;
-    }
-
-    function updateProgressBar(p) {
-        document.getElementById('progressBar').style.width = p + "%";
+    function updateProgressBar(percent) { 
+        const bar = document.getElementById('progressBar');
+        if(bar) bar.style.width = percent + "%"; 
     }
 </script>
 
