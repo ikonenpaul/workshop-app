@@ -1,222 +1,361 @@
-// --- KONFIGURATION ---
-const SUPABASE_URL = 'https://bntzsbeglcnewcqhmsva.supabase.co/'; 
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJudHpzYmVnbGNuZXdjcWhtc3ZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE4Mzg1MzAsImV4cCI6MjA4NzQxNDUzMH0.p76BhO6IWuPCTzDyHO6OXU6UXUGBH352nFhrHcVinsU';
-const TARGET_STUDENT_COUNT = 1; // Zum Testen auf 1, für Workshop auf 20/25 stellen
-
-// Initialisierung der Datenbank-Verbindung
-// Wir nennen die Variable 'db', um Konflikte mit dem Namen der Bibliothek 'supabase' zu vermeiden
-const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-const topics = [
-    { id: 1, name: "Taschengeld, Geld & Management" },
-    { id: 2, name: "Freizeitgestaltung & soz. Teilhabe" },
-    { id: 3, name: "Digitalisierung & Mediennutzung" },
-    { id: 4, name: "Gesundheit & Stress im Alltag" },
-    { id: 5, name: "Soziale Gerechtigkeit & Ungleichheit" }
-];
-
-const questions = [
-    { t: 1, q: "Ich möchte lernen, wie man einen Finanzplan erstellt." },
-    { t: 1, q: "Es ist wichtig zu wissen, wie Banken funktionieren." },
-    { t: 1, q: "Schüler sollten mehr über Steuern lernen." },
-    { t: 1, q: "Ich überlege genau, wofür ich mein Geld ausgebe." },
-    { t: 1, q: "Geld sparen für große Ziele fällt mir leicht." },
-    { t: 2, q: "Jeder Jugendliche sollte kostenlose Sportangebote haben." },
-    { t: 2, q: "Ich wünsche mir mehr Treffpunkte für Jugendliche." },
-    { t: 2, q: "Hobbys sollten nicht vom Geld der Eltern abhängen." },
-    { t: 2, q: "Vereine sollten für alle Menschen bezahlbar sein." },
-    { t: 2, q: "Ich verbringe meine Freizeit gerne aktiv in der Gemeinschaft." },
-    { t: 3, q: "Ich will verstehen, wie Algorithmen Social Media steuern." },
-    { t: 3, q: "Datenschutz im Internet beschäftigt mich." },
-    { t: 3, q: "KI wird meinen zukünftigen Job stark verändern." },
-    { t: 3, q: "Digitale Geräte sollten im Unterricht mehr genutzt werden." },
-    { t: 3, q: "Ich hinterfrage kritisch, was ich im Internet lese." },
-    { t: 4, q: "Der Leistungsdruck in der Schule belastet mich oft." },
-    { t: 4, q: "Ich möchte lernen, in Stresssituationen ruhig zu bleiben." },
-    { t: 4, q: "Gesunde Ernährung sollte in der Schule wichtiger sein." },
-    { t: 4, q: "Ausreichend Schlaf und Erholung sind mir wichtig." },
-    { t: 4, q: "Ich merke körperlich, wenn ich zu viel Stress habe." },
-    { t: 5, q: "Die Schere zwischen Arm und Reich ist zu groß." },
-    { t: 5, q: "Herkunft darf keinen Einfluss auf Bildungschancen haben." },
-    { t: 5, q: "Ich finde es wichtig, sich gegen Diskriminierung einzusetzen." },
-    { t: 5, q: "Reichtum sollte in einer Gesellschaft fairer verteilt werden." },
-    { t: 5, q: "Ich interessiere mich für politische Entscheidungen." }
-];
-
-let currentStudentName = "";
-let appStep = 0; 
-let studentScores = { 1:0, 2:0, 3:0, 4:0, 5:0 };
-
-// Diese Funktion startet die App
-function startApp() {
-    console.log("Start-Button geklickt"); // Test-Log für die Konsole
-    const nameInput = document.getElementById('studentName');
-    currentStudentName = nameInput.value.trim();
-
-    if(!currentStudentName) {
-        alert("Bitte gib deinen Namen ein.");
-        return;
-    }
-
-    // Umschalten der Ansicht
-    document.getElementById('view-login').classList.add('hidden');
-    document.getElementById('view-app').classList.remove('hidden');
-    
-    renderStep0();
-}
-
-function renderStep0() {
-    const container = document.getElementById('questionContainer');
-    container.innerHTML = "<h3>Wie wichtig sind dir diese Themen allgemein?</h3>";
-    topics.forEach(t => {
-        container.innerHTML += createRatingHTML(`topic_${t.id}`, t.name, t.id);
-    });
-    updateProgressBar(20);
-}
-
-function renderStep1() {
-    const container = document.getElementById('questionContainer');
-    container.innerHTML = "<h3>Beantworte bitte folgende Aussagen:</h3>";
-    const shuffled = [...questions].sort(() => Math.random() - 0.5);
-    shuffled.forEach((q, i) => {
-        container.innerHTML += createRatingHTML(`q_${i}`, q.q, q.t);
-    });
-    document.getElementById('nextBtn').innerText = "Absenden & Auswerten";
-    updateProgressBar(100);
-    window.scrollTo(0,0);
-}
-
-function createRatingHTML(name, label, topicId) {
-    return `
-        <div class="question-block">
-            <label>${label}</label>
-            <div class="options">
-                ${[1,2,3,4,5].map(n => `
-                    <div class="option">
-                        <input type="radio" name="${name}" data-topic="${topicId}" value="${n}" required>
-                        <br>${n}
-                    </div>`).join('')}
-            </div>
-            <div style="display:flex; justify-content:space-between; font-size:0.7em; max-width:400px; color:#666; margin-top:5px;">
-                <span>unwichtig</span><span>sehr wichtig</span>
-            </div>
-        </div>`;
-}
-
-async function processStep() {
-    const checked = document.querySelectorAll('#questionContainer input[type="radio"]:checked');
-    const totalNeeded = (appStep === 0) ? topics.length : questions.length;
-    
-    if(checked.length < totalNeeded) {
-        alert("Bitte alle Fragen beantworten.");
-        return;
-    }
-
-    checked.forEach(input => {
-        const tId = input.getAttribute('data-topic');
-        studentScores[tId] = (studentScores[tId] || 0) + parseInt(input.value);
-    });
-
-    if(appStep === 0) {
-        appStep = 1;
-        renderStep1();
-    } else {
-        await submitData();
-    }
-}
-
-async function submitData() {
-    document.getElementById('view-app').classList.add('hidden');
-    document.getElementById('view-waiting').classList.remove('hidden');
-
-    const { error } = await db.from('submissions').insert([
-        { name: currentStudentName, scores: studentScores }
-    ]);
-
-    if(error) {
-        console.error("Fehler beim Speichern:", error);
-        alert("Fehler beim Speichern: " + error.message);
-        return;
-    }
-    startPolling();
-}
-
-function startPolling() {
-    const timer = setInterval(async () => {
-        const { data } = await db.from('submissions').select('*');
-        if(!data) return;
-
-        document.getElementById('countDisplay').innerText = `${data.length} von ${TARGET_STUDENT_COUNT} Schülern sind bereit.`;
-
-        if(data.length >= TARGET_STUDENT_COUNT) {
-            // Erstzuweisung prüfen
-            if(!data[0].assigned_group) {
-                await calculateAssignments(data);
-            }
-
-            const me = data.find(s => s.name === currentStudentName);
-            if(me && me.assigned_group) {
-                clearInterval(timer);
-                document.getElementById('view-waiting').classList.add('hidden');
-                document.getElementById('view-result').classList.remove('hidden');
-                document.getElementById('groupName').innerText = me.assigned_group;
-            }
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Workshop Gruppen-Check</title>
+    <!-- Externe Bibliotheken -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root {
+            --primary: #3498db;
+            --secondary: #2ecc71;
+            --bg: #f4f7f6;
+            --text: #2c3e50;
         }
-    }, 3000);
-}
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+        .container {
+            max-width: 700px;
+            width: 100%;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        h1 { color: var(--primary); text-align: center; margin-top: 0; }
+        .hidden { display: none; }
+        
+        /* Quiz Styles */
+        .question-block {
+            margin-bottom: 25px;
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+        }
+        .question-text {
+            font-weight: bold;
+            margin-bottom: 10px;
+            display: block;
+        }
+        .options {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+        }
+        .option {
+            text-align: center;
+            flex: 1;
+        }
+        .scale-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75em;
+            color: #7f8c8d;
+            margin-top: 5px;
+        }
 
-async function calculateAssignments(allStudents) {
-    const maxPerGroup = Math.ceil(allStudents.length / 5);
-    
-    allStudents.forEach(s => {
-        s.pref = Object.entries(s.scores)
-            .sort((a,b) => b[1] - a[1])
-            .map(e => parseInt(e[0]));
-        s.currentGroup = s.pref[0];
-    });
+        /* Form & Buttons */
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            margin: 15px 0;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+            transition: background 0.2s;
+        }
+        button:hover { background: #2980b9; }
 
-    let changed = true;
-    let iterations = 0;
-    while(changed && iterations < 50) {
-        changed = false;
-        iterations++;
-        for(let gId = 1; gId <= 5; gId++) {
-            let members = allStudents.filter(s => s.currentGroup === gId);
-            if(members.length > maxPerGroup) {
-                let bestCandidate = null;
-                let minLoss = Infinity;
-                let targetG = null;
+        /* Progress & Loading */
+        .progress-container {
+            height: 8px;
+            background: #eee;
+            border-radius: 4px;
+            margin-bottom: 25px;
+            overflow: hidden;
+        }
+        .progress-bar {
+            height: 100%;
+            background: var(--secondary);
+            width: 0%;
+            transition: width 0.3s;
+        }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .result-card {
+            background: #e8f6ef;
+            border: 2px solid var(--secondary);
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
 
-                members.forEach(s => {
-                    for(let p=1; p < s.pref.length; p++) {
-                        let nextG = s.pref[p];
-                        if(allStudents.filter(st => st.currentGroup === nextG).length < maxPerGroup) {
-                            let loss = s.scores[gId] - s.scores[nextG];
-                            if(loss < minLoss) {
-                                minLoss = loss;
-                                bestCandidate = s;
-                                targetG = nextG;
-                            }
-                            break;
-                        }
-                    }
-                });
+<div class="container">
+    <!-- VIEW 1: LOGIN -->
+    <div id="view-login">
+        <h1>Workshop Check-In</h1>
+        <p style="text-align: center;">Gib deinen Namen ein, um die Themen-Zuweisung zu starten.</p>
+        <input type="text" id="studentName" placeholder="Dein Vorname / Name">
+        <button onclick="startApp()">Starten</button>
+    </div>
 
-                if(bestCandidate) {
-                    bestCandidate.currentGroup = targetG;
-                    changed = true;
+    <!-- VIEW 2: QUIZ -->
+    <div id="view-app" class="hidden">
+        <div class="progress-container"><div id="progressBar" class="progress-bar"></div></div>
+        <div id="questionContainer"></div>
+        <button id="nextBtn" onclick="processStep()">Weiter</button>
+    </div>
+
+    <!-- VIEW 3: WAITING -->
+    <div id="view-waiting" class="hidden">
+        <h1>Warten auf die anderen...</h1>
+        <div style="text-align: center; padding: 20px;">
+            <p id="statusMsg">Deine Antworten wurden sicher gespeichert.</p>
+            <div class="loader"></div>
+            <p id="countDisplay" style="font-weight: bold; color: var(--primary);">Lade Teilnehmerstatus...</p>
+        </div>
+    </div>
+
+    <!-- VIEW 4: RESULT -->
+    <div id="view-result" class="hidden">
+        <h1>Dein Ergebnis</h1>
+        <div class="result-card">
+            <p>Du bist in der Gruppe:</p>
+            <h2 id="groupName" style="font-size: 2em; color: #27ae60; margin: 10px 0;">Berechnung läuft...</h2>
+        </div>
+        <p style="text-align: center; margin-top: 20px;">Gehe nun zu deinem zugewiesenen Gruppentisch.</p>
+    </div>
+</div>
+
+<script>
+    // --- SUPABASE SETUP ---
+    // Hier unbedingt deine eigenen Daten eintragen!
+    const SUPABASE_URL = 'https://bntzsbeglcnewcqhmsva.supabase.co/'; 
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJudHpzYmVnbGNuZXdjcWhtc3ZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE4Mzg1MzAsImV4cCI6MjA4NzQxNDUzMH0.p76BhO6IWuPCTzDyHO6OXU6UXUGBH352nFhrHcVinsU';
+    const TARGET_STUDENT_COUNT = 1; // ZUM TESTEN AUF 1, FÜR WORKSHOP AUF 20+
+
+    const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    const topics = [
+        { id: 1, name: "Taschengeld, Geld & Management" },
+        { id: 2, name: "Freizeitgestaltung & soz. Teilhabe" },
+        { id: 3, name: "Digitalisierung & Mediennutzung" },
+        { id: 4, name: "Gesundheit & Stress im Alltag" },
+        { id: 5, name: "Soziale Gerechtigkeit & Ungleichheit" }
+    ];
+
+    const questions = [
+        { t: 1, q: "Ich möchte lernen, wie man einen Finanzplan erstellt." },
+        { t: 1, q: "Es ist wichtig zu wissen, wie Banken funktionieren." },
+        { t: 1, q: "Schüler sollten mehr über Steuern lernen." },
+        { t: 1, q: "Ich überlege genau, wofür ich mein Geld ausgebe." },
+        { t: 1, q: "Geld sparen für große Ziele fällt mir leicht." },
+        { t: 2, q: "Jeder Jugendliche sollte kostenlose Sportangebote haben." },
+        { t: 2, q: "Ich wünsche mir mehr Treffpunkte für Jugendliche." },
+        { t: 2, q: "Hobbys sollten nicht vom Geld der Eltern abhängen." },
+        { t: 2, q: "Vereine sollten für alle Menschen bezahlbar sein." },
+        { t: 2, q: "Ich verbringe meine Freizeit gerne aktiv in der Gemeinschaft." },
+        { t: 3, q: "Ich will verstehen, wie Algorithmen Social Media steuern." },
+        { t: 3, q: "Datenschutz im Internet beschäftigt mich." },
+        { t: 3, q: "KI wird meinen zukünftigen Job stark verändern." },
+        { t: 3, q: "Digitale Geräte sollten im Unterricht mehr genutzt werden." },
+        { t: 3, q: "Ich hinterfrage kritisch, was ich im Internet lese." },
+        { t: 4, q: "Der Leistungsdruck in der Schule belastet mich oft." },
+        { t: 4, q: "Ich möchte lernen, in Stresssituationen ruhig zu bleiben." },
+        { t: 4, q: "Gesunde Ernährung sollte in der Schule wichtiger sein." },
+        { t: 4, q: "Ausreichend Schlaf und Erholung sind mir wichtig." },
+        { t: 4, q: "Ich merke körperlich, wenn ich zu viel Stress habe." },
+        { t: 5, q: "Die Schere zwischen Arm und Reich ist zu groß." },
+        { t: 5, q: "Herkunft darf keinen Einfluss auf Bildungschancen haben." },
+        { t: 5, q: "Ich finde es wichtig, sich gegen Diskriminierung einzusetzen." },
+        { t: 5, q: "Reichtum sollte in einer Gesellschaft fairer verteilt werden." },
+        { t: 5, q: "Ich interessiere mich für politische Entscheidungen." }
+    ];
+
+    let currentStudentName = "";
+    let appStep = 0; // 0 = Hauptthemen, 1 = Gemischte Fragen
+    let studentScores = { 1:0, 2:0, 3:0, 4:0, 5:0 };
+
+    function startApp() {
+        const input = document.getElementById('studentName');
+        currentStudentName = input.value.trim();
+        if(!currentStudentName) return alert("Bitte gib deinen Namen ein!");
+        
+        document.getElementById('view-login').classList.add('hidden');
+        document.getElementById('view-app').classList.remove('hidden');
+        renderStep0();
+    }
+
+    function renderStep0() {
+        const container = document.getElementById('questionContainer');
+        container.innerHTML = "<h3>Wie wichtig sind dir diese Bereiche?</h3>";
+        topics.forEach(t => {
+            container.innerHTML += createRatingHTML(`topic_${t.id}`, t.name, t.id);
+        });
+        updateProgressBar(20);
+    }
+
+    function renderStep1() {
+        const container = document.getElementById('questionContainer');
+        container.innerHTML = "<h3>Bewerte die folgenden Aussagen:</h3>";
+        const shuffled = [...questions].sort(() => Math.random() - 0.5);
+        shuffled.forEach((q, i) => {
+            container.innerHTML += createRatingHTML(`q_${i}`, q.q, q.t);
+        });
+        document.getElementById('nextBtn').innerText = "Absenden & Auswerten";
+        updateProgressBar(100);
+        window.scrollTo(0,0);
+    }
+
+    function createRatingHTML(name, label, topicId) {
+        return `
+            <div class="question-block">
+                <span class="question-text">${label}</span>
+                <div class="options">
+                    ${[1,2,3,4,5].map(n => `
+                        <div class="option">
+                            <input type="radio" name="${name}" data-topic="${topicId}" value="${n}" required>
+                            <br><span style="font-size:0.9em">${n}</span>
+                        </div>`).join('')}
+                </div>
+                <div class="scale-labels">
+                    <span>unwichtig</span><span>sehr wichtig</span>
+                </div>
+            </div>`;
+    }
+
+    async function processStep() {
+        const radios = document.querySelectorAll('#questionContainer input[type="radio"]:checked');
+        const required = (appStep === 0) ? topics.length : questions.length;
+
+        if(radios.length < required) return alert("Bitte alle Fragen bewerten!");
+
+        radios.forEach(r => {
+            const tId = r.getAttribute('data-topic');
+            studentScores[tId] += parseInt(r.value);
+        });
+
+        if(appStep === 0) {
+            appStep = 1;
+            renderStep1();
+        } else {
+            await submitToDatabase();
+        }
+    }
+
+    async function submitToDatabase() {
+        document.getElementById('view-app').classList.add('hidden');
+        document.getElementById('view-waiting').classList.remove('hidden');
+
+        const { error } = await db.from('submissions').insert([
+            { name: currentStudentName, scores: studentScores }
+        ]);
+
+        if(error) {
+            alert("Fehler beim Speichern: " + error.message);
+            return;
+        }
+        startPolling();
+    }
+
+    function startPolling() {
+        const interval = setInterval(async () => {
+            const { data } = await db.from('submissions').select('*');
+            if(!data) return;
+
+            document.getElementById('countDisplay').innerText = `${data.length} von ${TARGET_STUDENT_COUNT} Schülern fertig.`;
+
+            if(data.length >= TARGET_STUDENT_COUNT) {
+                // Gruppenberechnung anstoßen, falls noch nicht geschehen
+                if(!data[0].assigned_group) {
+                    await runBalancing(data);
+                }
+
+                const myEntry = data.find(s => s.name === currentStudentName);
+                if(myEntry && myEntry.assigned_group) {
+                    clearInterval(interval);
+                    showResult(myEntry.assigned_group);
+                }
+            }
+        }, 3000);
+    }
+
+    async function runBalancing(all) {
+        const max = Math.ceil(all.length / 5);
+        
+        // Wunschliste
+        all.forEach(s => {
+            s.pref = Object.entries(s.scores).sort((a,b) => b[1]-a[1]).map(e => parseInt(e[0]));
+            s.curG = s.pref[0];
+        });
+
+        // Einfacher Ausgleich
+        for(let i=0; i<50; i++) {
+            let overflow = all.filter(s => all.filter(x => x.curG === s.curG).length > max);
+            if(overflow.length === 0) break;
+
+            overflow.sort((a,b) => {
+                let lossA = a.scores[a.curG] - a.scores[a.pref[1]];
+                let lossB = b.scores[b.curG] - b.scores[b.pref[1]];
+                return lossA - lossB;
+            });
+
+            let candidate = overflow[0];
+            for(let p=1; p<5; p++) {
+                let nextG = candidate.pref[p];
+                if(all.filter(x => x.curG === nextG).length < max) {
+                    candidate.curG = nextG;
+                    break;
                 }
             }
         }
+
+        for(let s of all) {
+            const tName = topics.find(t => t.id === s.curG).name;
+            await db.from('submissions').update({ assigned_group: tName }).eq('name', s.name);
+        }
     }
 
-    for(let s of allStudents) {
-        const topicName = topics.find(t => t.id === s.currentGroup).name;
-        await db.from('submissions').update({ assigned_group: topicName }).eq('name', s.name);
+    function showResult(group) {
+        document.getElementById('view-waiting').classList.add('hidden');
+        document.getElementById('view-result').classList.remove('hidden');
+        document.getElementById('groupName').innerText = group;
     }
-}
 
-function updateProgressBar(p) { 
-    const bar = document.getElementById('progressBar');
-    if(bar) bar.style.width = p + "%"; 
-}
+    function updateProgressBar(p) {
+        document.getElementById('progressBar').style.width = p + "%";
+    }
+</script>
+
+</body>
+</html>
