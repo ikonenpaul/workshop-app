@@ -293,10 +293,13 @@
 </div>
 
 <script>
-    // --- KONFIGURATION (HIER DEINE DATEN EINTRAGEN!) ---
-    const SUPABASE_URL = 'https://bntzsbeglcnewcqhmsva.supabase.co/'; 
+    // --- KONFIGURATION MIT DEINEN DATEN ---
+    const SUPABASE_URL = 'https://bntzsbeglcnewcqhmsva.supabase.co'; 
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJudHpzYmVnbGNuZXdjcWhtc3ZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE4Mzg1MzAsImV4cCI6MjA4NzQxNDUzMH0.p76BhO6IWuPCTzDyHO6OXU6UXUGBH352nFhrHcVinsU';
-    const TARGET_STUDENT_COUNT = 3; // Für den Test auf 1 lassen, am Workshop-Tag anpassen!
+    
+    // ZIEL-ANZAHL: Aktuell auf 3 gestellt für deinen Test.
+    // WICHTIG: Vor dem echten Workshop auf 20 (oder wie viele Schüler du hast) stellen!
+    const TARGET_STUDENT_COUNT = 3; 
 
     const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -339,6 +342,7 @@
     let currentStudentName = "";
     let appStep = 0; 
     let studentScores = { 1:0, 2:0, 3:0, 4:0, 5:0 };
+    let isCalculating = false; // Verhindert, dass das Handy mehrmals gleichzeitig rechnet
 
     function startApp() {
         currentStudentName = document.getElementById('studentName').value.trim();
@@ -357,7 +361,6 @@
         container.innerHTML = "<h1>Dein Fokus</h1><p class='subtitle'>Bewerte, wie relevant diese fünf Oberthemen allgemein für dich sind.</p>";
         
         topics.forEach((t, index) => {
-            // Kleine Verzögerung in der Animation für einen Kaskaden-Effekt
             container.innerHTML += createTileHTML(`topic_${t.id}`, t.name, t.id, index * 0.1);
         });
         updateProgressBar(20);
@@ -436,86 +439,90 @@
 
     function startPolling() {
         const timer = setInterval(async () => {
-            const { data } = await db.from('submissions').select('*');
-            if(!data) return;
+            // Hole alle Daten, nach ID aufsteigend sortiert
+            const { data, error } = await db.from('submissions').select('*').order('id', { ascending: true });
+            if (error || !data) return;
 
             document.getElementById('countDisplay').innerText = `Bereits bereit: ${data.length} / ${TARGET_STUDENT_COUNT}`;
 
-            if(data.length >= TARGET_STUDENT_COUNT) {
-                // Wenn noch keine Gruppe zugewiesen wurde, starte den Balancing-Algorithmus
-                if(!data[0].assigned_group) {
-                    await calculateAssignments(data);
-                }
-
-                // Prüfen, ob für diesen Schüler ein Ergebnis vorliegt
+            if (data.length >= TARGET_STUDENT_COUNT) {
+                
+                // 1. Prüfen, ob für MICH schon ein Ergebnis vorliegt
                 const me = data.find(s => s.name === currentStudentName);
-                if(me && me.assigned_group) {
+                if (me && me.assigned_group) {
                     clearInterval(timer);
                     document.getElementById('view-waiting').classList.add('hidden');
                     document.getElementById('view-result').classList.remove('hidden');
                     document.getElementById('groupName').innerText = me.assigned_group;
+                    return; // Stoppe hier, wir sind fertig!
+                }
+
+                // 2. Schauen, ob IRGENDJEMAND schon eine Gruppe hat (dann rechnet gerade ein anderes Handy)
+                const someoneHasGroup = data.some(s => s.assigned_group !== null);
+
+                // 3. Wenn niemand eine Gruppe hat und wir noch nicht rechnen -> Start!
+                if (!someoneHasGroup && !isCalculating) {
+                    isCalculating = true; // Sperre aktivieren
+                    await calculateAssignments(data);
                 }
             }
         }, 3000);
     }
 
-    // Der intelligente Algorithmus, um die Schüler fair und gleichmäßig zu verteilen
     async function calculateAssignments(allStudents) {
-        const maxPerGroup = Math.ceil(allStudents.length / 5);
-        
-        // 1. Präferenzliste für jeden erstellen (absteigend sortiert nach Punktzahl)
-        allStudents.forEach(s => {
-            s.pref = Object.entries(s.scores)
-                .sort((a,b) => b[1] - a[1])
-                .map(e => parseInt(e[0]));
-            s.currentGroup = s.pref[0]; // Erstmal alle in ihren Erstwunsch packen
-        });
-
-        // 2. Balancing (Ausgleichsschleife)
-        let changed = true;
-        let iterations = 0;
-        
-        while(changed && iterations < 50) {
-            changed = false;
-            iterations++;
+        try {
+            const maxPerGroup = Math.ceil(allStudents.length / 5);
             
-            for(let gId = 1; gId <= 5; gId++) {
-                let members = allStudents.filter(s => s.currentGroup === gId);
-                
-                if(members.length > maxPerGroup) {
-                    let bestCandidate = null;
-                    let minLoss = Infinity;
-                    let targetG = null;
+            // 1. Wunschliste für jeden erstellen
+            allStudents.forEach(s => {
+                // Zur Sicherheit: Objekt sicher parsen, falls Supabase es als String liefert
+                s.scoresObj = typeof s.scores === 'string' ? JSON.parse(s.scores) : s.scores;
+                s.pref = Object.entries(s.scoresObj).sort((a,b) => b[1] - a[1]).map(e => parseInt(e[0]));
+                s.curG = s.pref[0] || 1;
+            });
 
-                    // Finde den Schüler, dem der Wechsel in die zweit-/drittbeste Gruppe am wenigsten "Schmerzen" bereitet
-                    members.forEach(s => {
-                        for(let p=1; p < s.pref.length; p++) {
-                            let nextG = s.pref[p];
-                            // Hat die nächste Wunschgruppe noch Platz?
-                            if(allStudents.filter(st => st.currentGroup === nextG).length < maxPerGroup) {
-                                let loss = s.scores[gId] - s.scores[nextG];
-                                if(loss < minLoss) {
-                                    minLoss = loss;
-                                    bestCandidate = s;
-                                    targetG = nextG;
-                                }
-                                break;
-                            }
-                        }
-                    });
+            // 2. Ausgleich: Verschiebe Leute, bis Gruppen gleich groß sind
+            for(let i=0; i < 50; i++) {
+                let overflow = allStudents.filter(s => allStudents.filter(x => x.curG === s.curG).length > maxPerGroup);
+                if(overflow.length === 0) break;
 
-                    if(bestCandidate) {
-                        bestCandidate.currentGroup = targetG;
-                        changed = true; // Wir haben etwas verschoben, also müssen wir nochmal prüfen
+                overflow.sort((a,b) => {
+                    // Punktzahlen aus dem geparsten Objekt lesen
+                    let scoreA_best = a.scoresObj[a.curG] || 0;
+                    let scoreA_next = a.scoresObj[a.pref[1]] || 0;
+                    let scoreB_best = b.scoresObj[b.curG] || 0;
+                    let scoreB_next = b.scoresObj[b.pref[1]] || 0;
+                    
+                    return (scoreA_best - scoreA_next) - (scoreB_best - scoreB_next);
+                });
+
+                let candidate = overflow[0];
+                for(let p=1; p < 5; p++) {
+                    let nextG = candidate.pref[p];
+                    if(allStudents.filter(x => x.curG === nextG).length < maxPerGroup) {
+                        candidate.curG = nextG;
+                        break;
                     }
                 }
             }
-        }
 
-        // 3. Ergebnisse in die Supabase-Datenbank zurückschreiben
-        for(let s of allStudents) {
-            const topicName = topics.find(t => t.id === s.currentGroup).name;
-            await db.from('submissions').update({ assigned_group: topicName }).eq('name', s.name);
+            // 3. Ergebnisse in Supabase speichern
+            for(let s of allStudents) {
+                const topicObj = topics.find(t => t.id === s.curG);
+                const topicName = topicObj ? topicObj.name : "Unbekannt";
+                
+                // Speicher-Update: Versucht erst über ID, sonst über Name (falls die ID-Spalte fehlt)
+                if (s.id) {
+                    await db.from('submissions').update({ assigned_group: topicName }).eq('id', s.id);
+                } else {
+                    await db.from('submissions').update({ assigned_group: topicName }).eq('name', s.name);
+                }
+            }
+        } catch (e) {
+            console.error("Fehler bei der Berechnung:", e);
+        } finally {
+            // Nach 5 Sekunden die Rechen-Sperre wieder freigeben
+            setTimeout(() => { isCalculating = false; }, 5000);
         }
     }
 
