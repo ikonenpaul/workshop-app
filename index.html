@@ -308,7 +308,8 @@
         { id: 2, name: "Freizeit & Soziale Teilhabe" },
         { id: 3, name: "Digitalisierung & Medien" },
         { id: 4, name: "Gesundheit & Stress" },
-        { id: 5, name: "Soziale Gerechtigkeit" }
+        { id: 5, name: "Soziale Gerechtigkeit" },
+        { id: 6, name: "Mitbestimmung & Demokratie im Alltag" }
     ];
 
     const questions = [
@@ -336,12 +337,14 @@
         { t: 5, q: "Die Herkunft darf keinen Einfluss auf die Bildungschancen haben." },
         { t: 5, q: "Ich finde es extrem wichtig, sich aktiv gegen Diskriminierung einzusetzen." },
         { t: 5, q: "Reichtum sollte in einer Gesellschaft wesentlich fairer verteilt werden." },
-        { t: 5, q: "Ich interessiere mich dafür, wie politische Entscheidungen uns beeinflussen." }
+        { t: 5, q: "Ich interessiere mich dafür, wie politische Entscheidungen uns beeinflussen." },
+        { t: 6, q: "Ich finde es wichtig, dass Jugendliche bei Entscheidungen in der Schule aktiv mitreden können." },
+        { t: 6, q: "Demokratie funktioniert nur, wenn sich jeder Einzelne im Alltag dafür einsetzt." }
     ];
 
     let currentStudentName = "";
     let appStep = 0; 
-    let studentScores = { 1:0, 2:0, 3:0, 4:0, 5:0 };
+    let studentScores = { 1:0, 2:0, 3:0, 4:0, 5:0, 6:0 };
     let isCalculating = false; // Verhindert, dass das Handy mehrmals gleichzeitig rechnet
 
     function startApp() {
@@ -358,7 +361,7 @@
 
     function renderStep0() {
         const container = document.getElementById('questionContainer');
-        container.innerHTML = "<h1>Dein Fokus</h1><p class='subtitle'>Bewerte, wie relevant diese fünf Oberthemen allgemein für dich sind.</p>";
+        container.innerHTML = "<h1>Dein Fokus</h1><p class='subtitle'>Bewerte, wie relevant diese sechs Oberthemen allgemein für dich sind.</p>";
         
         topics.forEach((t, index) => {
             container.innerHTML += createTileHTML(`topic_${t.id}`, t.name, t.id, index * 0.1);
@@ -471,7 +474,8 @@
 
     async function calculateAssignments(allStudents) {
         try {
-            const maxPerGroup = Math.ceil(allStudents.length / 5);
+            const numTopics = topics.length;
+            const maxPerGroup = Math.ceil(allStudents.length / numTopics);
             
             // 1. Wunschliste für jeden erstellen
             allStudents.forEach(s => {
@@ -497,7 +501,7 @@
                 });
 
                 let candidate = overflow[0];
-                for(let p=1; p < 5; p++) {
+                for(let p=1; p < numTopics; p++) {
                     let nextG = candidate.pref[p];
                     if(allStudents.filter(x => x.curG === nextG).length < maxPerGroup) {
                         candidate.curG = nextG;
