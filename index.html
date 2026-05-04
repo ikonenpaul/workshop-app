@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Workshop | Themen Findung</title>
     
-    <!-- Moderne Google Schriftart: Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
-    <!-- Supabase Library -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- QR-Code Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
     <style>
         :root {
@@ -245,6 +245,47 @@
             margin: 10px 0 0 0;
             letter-spacing: -0.02em;
         }
+
+        /* QR-Code Sektion */
+        .qr-section {
+            text-align: center;
+            margin-bottom: 28px;
+            padding: 24px 20px;
+            background: var(--bg-color);
+            border-radius: 14px;
+            border: 1px dashed var(--border-color);
+        }
+
+        .qr-label {
+            font-weight: 600;
+            color: var(--text-muted);
+            margin: 0 0 16px 0;
+            font-size: 12px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        #qrcode {
+            display: inline-block;
+            padding: 12px;
+            background: white;
+            border-radius: 12px;
+            line-height: 0;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+        }
+
+        #qrcode img, #qrcode canvas {
+            display: block;
+            margin: 0 auto;
+        }
+
+        .qr-url {
+            margin: 14px 0 0 0;
+            font-size: 13px;
+            color: var(--text-muted);
+            font-weight: 500;
+            font-family: 'SF Mono', Menlo, Consolas, monospace;
+        }
     </style>
 </head>
 <body>
@@ -254,6 +295,14 @@
     <div id="view-login">
         <h1>Workshop Check-In</h1>
         <p class="subtitle">Finde heraus, welches Thema am besten zu dir passt. Deine Angaben helfen uns bei der Gruppeneinteilung.</p>
+        
+        <!-- QR-Code zum Einscannen -->
+        <div class="qr-section">
+            <p class="qr-label">Scanne mich mit deinem Handy</p>
+            <div id="qrcode"></div>
+            <p class="qr-url">ikonenpaul.github.io/workshop-app</p>
+        </div>
+        
         <input type="text" id="studentName" placeholder="Wie heißt du?" autocomplete="off">
         <button onclick="startApp()">Jetzt starten</button>
     </div>
@@ -288,6 +337,8 @@
     // --- KONFIGURATION ---
     const SUPABASE_URL = 'https://bntzsbeglcnewcqhmsva.supabase.co'; 
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJudHpzYmVnbGNuZXdjcWhtc3ZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE4Mzg1MzAsImV4cCI6MjA4NzQxNDUzMH0.p76BhO6IWuPCTzDyHO6OXU6UXUGBH352nFhrHcVinsU';
+    
+    const WORKSHOP_URL = 'https://ikonenpaul.github.io/workshop-app/';
     
     // ZIEL-ANZAHL: Auf die echte Schülerzahl stellen!
     const TARGET_STUDENT_COUNT = 15; 
@@ -332,9 +383,20 @@
 
     let currentStudentName = "";
     let appStep = 0; 
-    // FIX 1: Kein Key 6 mehr — nur die echten 5 Themen
     let studentScores = { 1:0, 2:0, 3:0, 4:0, 5:0 };
     let isCalculating = false;
+
+    // QR-Code beim Laden generieren
+    window.addEventListener('DOMContentLoaded', () => {
+        new QRCode(document.getElementById("qrcode"), {
+            text: WORKSHOP_URL,
+            width: 180,
+            height: 180,
+            colorDark: "#0f172a",
+            colorLight: "#ffffff",
+            correctLevel: QRCode.CorrectLevel.H
+        });
+    });
 
     function startApp() {
         currentStudentName = document.getElementById('studentName').value.trim();
@@ -436,7 +498,6 @@
 
             document.getElementById('countDisplay').innerText = `Bereits bereit: ${data.length} / ${TARGET_STUDENT_COUNT}`;
 
-            // 1. Habe ich schon ein Ergebnis?
             const me = data.find(s => s.name === currentStudentName);
             if (me && me.assigned_group) {
                 clearInterval(timer);
@@ -449,12 +510,10 @@
             if (data.length >= TARGET_STUDENT_COUNT) {
                 const someoneHasGroup = data.some(s => s.assigned_group !== null);
 
-                // 2. Erste Berechnung — niemand hat bisher eine Gruppe
                 if (!someoneHasGroup && !isCalculating) {
                     isCalculating = true;
                     await calculateAssignments(data);
                 }
-                // FIX 4: Spätankömmling — andere haben schon Gruppen, ich nicht
                 else if (someoneHasGroup && me && !me.assigned_group && !isCalculating) {
                     isCalculating = true;
                     await assignLatecomer(me, data);
@@ -463,10 +522,8 @@
         }, 3000);
     }
 
-    // Helper: gültige Topic-IDs (1..5)
     const validTopicIds = topics.map(t => t.id);
 
-    // Helper: erstellt Präferenzliste aus scoresObj (filtert ungültige IDs raus)
     function buildPreferences(scoresObj) {
         return Object.entries(scoresObj)
             .map(e => [parseInt(e[0]), e[1]])
@@ -481,7 +538,6 @@
             const maxPerGroup = Math.ceil(allStudents.length / numTopics);
             const minPerGroup = Math.floor(allStudents.length / numTopics);
             
-            // 1. Wunschliste pro Schüler erstellen
             allStudents.forEach(s => {
                 s.scoresObj = typeof s.scores === 'string' ? JSON.parse(s.scores) : s.scores;
                 s.pref = buildPreferences(s.scoresObj);
@@ -490,7 +546,6 @@
 
             const groupSize = (gId) => allStudents.filter(x => x.curG === gId).length;
             
-            // FIX 2: Findet die *aktuell* nächste freie Präferenz (nicht hartcodiert pref[1])
             const findNextAvailable = (student) => {
                 const currentIdx = student.pref.indexOf(student.curG);
                 for (let p = currentIdx + 1; p < student.pref.length; p++) {
@@ -501,7 +556,7 @@
                 return null;
             };
 
-            // 2. Phase A: Überfüllte Gruppen abbauen (max einhalten)
+            // Phase A: Überfüllte Gruppen abbauen
             for (let i = 0; i < 200; i++) {
                 const overflow = allStudents.filter(s => groupSize(s.curG) > maxPerGroup);
                 if (overflow.length === 0) break;
@@ -521,7 +576,6 @@
                 if (nextG !== null) {
                     candidate.curG = nextG;
                 } else {
-                    // Notfall: irgendeine Gruppe mit Platz
                     const anyAvailable = topics.find(t => groupSize(t.id) < maxPerGroup);
                     if (anyAvailable) {
                         candidate.curG = anyAvailable.id;
@@ -531,19 +585,17 @@
                 }
             }
 
-            // FIX 3: Phase B — leere/unterbesetzte Gruppen auffüllen
+            // Phase B: Unterbesetzte Gruppen auffüllen
             for (let i = 0; i < 200; i++) {
                 const underfilled = topics.filter(t => groupSize(t.id) < minPerGroup);
                 if (underfilled.length === 0) break;
 
                 const targetT = underfilled[0];
-                // Kandidaten: Schüler in Gruppen, die mehr als min haben
                 const candidates = allStudents.filter(s => 
                     s.curG !== targetT.id && groupSize(s.curG) > minPerGroup
                 );
                 if (candidates.length === 0) break;
 
-                // Wähle den mit kleinstem Verlust beim Wechsel zur Zielgruppe
                 candidates.sort((a, b) => {
                     const aLoss = (a.scoresObj[a.curG] || 0) - (a.scoresObj[targetT.id] || 0);
                     const bLoss = (b.scoresObj[b.curG] || 0) - (b.scoresObj[targetT.id] || 0);
@@ -553,7 +605,6 @@
                 candidates[0].curG = targetT.id;
             }
 
-            // 3. Ergebnisse speichern
             for (let s of allStudents) {
                 const topicObj = topics.find(t => t.id === s.curG);
                 const topicName = topicObj ? topicObj.name : "Unbekannt";
@@ -571,18 +622,15 @@
         }
     }
 
-    // FIX 4: Späterer Schüler wird in seine beste freie Gruppe gepackt
     async function assignLatecomer(me, allData) {
         try {
             const myScores = typeof me.scores === 'string' ? JSON.parse(me.scores) : me.scores;
             const myPref = buildPreferences(myScores);
 
-            // Aktuelle Gruppengrößen anhand der Namen (assigned_group ist der Topic-Name)
             const groupCount = (topicName) => 
                 allData.filter(s => s.assigned_group === topicName).length;
             
             const numTopics = topics.length;
-            // Etwas Spielraum für Spätankömmlinge
             const flexMax = Math.ceil(allData.length / numTopics);
             
             let chosenTopic = null;
@@ -594,7 +642,6 @@
                 }
             }
             
-            // Fallback: kleinste Gruppe nehmen
             if (!chosenTopic) {
                 chosenTopic = topics.reduce((min, t) => 
                     groupCount(t.name) < groupCount(min.name) ? t : min, topics[0]);
