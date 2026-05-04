@@ -15,10 +15,9 @@
 
     <style>
         :root {
-            /* Farbpalette */
             --bg-color: #f8fafc;
             --card-bg: #ffffff;
-            --primary: #4f46e5;      /* Modernes Indigo */
+            --primary: #4f46e5;
             --primary-hover: #4338ca;
             --primary-light: #e0e7ff;
             --text-main: #0f172a;
@@ -74,7 +73,6 @@
 
         .hidden { display: none !important; }
 
-        /* Modernes Input-Feld */
         input[type="text"] {
             width: 100%;
             background: var(--bg-color);
@@ -100,7 +98,6 @@
             box-shadow: 0 0 0 4px var(--primary-light);
         }
 
-        /* Premium Button */
         button {
             width: 100%;
             background: var(--primary);
@@ -127,7 +124,6 @@
             box-shadow: 0 2px 8px rgba(79, 70, 229, 0.2);
         }
 
-        /* Frage-Block Animation */
         .question-card {
             margin-bottom: 36px;
             animation: fadeIn 0.5s ease forwards;
@@ -148,7 +144,6 @@
             color: var(--text-main);
         }
 
-        /* Moderne interaktive Kacheln (Rating Tiles) */
         .rating-grid {
             display: flex;
             gap: 8px;
@@ -204,7 +199,6 @@
             color: var(--text-muted);
         }
 
-        /* Progress Bar */
         .progress-wrap {
             height: 6px;
             background: var(--bg-color);
@@ -221,7 +215,6 @@
             border-radius: 3px;
         }
 
-        /* Modern Spinner */
         .spinner {
             width: 48px;
             height: 48px;
@@ -236,7 +229,6 @@
             to { transform: rotate(360deg); } 
         }
 
-        /* Ergebnis-Box */
         .result-box {
             background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
             border: 1px solid #bbf7d0;
@@ -293,12 +285,11 @@
 </div>
 
 <script>
-    // --- KONFIGURATION MIT DEINEN DATEN ---
+    // --- KONFIGURATION ---
     const SUPABASE_URL = 'https://bntzsbeglcnewcqhmsva.supabase.co'; 
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJudHpzYmVnbGNuZXdjcWhtc3ZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE4Mzg1MzAsImV4cCI6MjA4NzQxNDUzMH0.p76BhO6IWuPCTzDyHO6OXU6UXUGBH352nFhrHcVinsU';
     
-    // ZIEL-ANZAHL: Aktuell auf 3 gestellt für deinen Test.
-    // WICHTIG: Vor dem echten Workshop auf 20 (oder wie viele Schüler du hast) stellen!
+    // ZIEL-ANZAHL: Auf die echte Schülerzahl stellen!
     const TARGET_STUDENT_COUNT = 15; 
 
     const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -341,8 +332,9 @@
 
     let currentStudentName = "";
     let appStep = 0; 
-    let studentScores = { 1:0, 2:0, 3:0, 4:0, 5:0, 6:0 };
-    let isCalculating = false; // Verhindert, dass das Handy mehrmals gleichzeitig rechnet
+    // FIX 1: Kein Key 6 mehr — nur die echten 5 Themen
+    let studentScores = { 1:0, 2:0, 3:0, 4:0, 5:0 };
+    let isCalculating = false;
 
     function startApp() {
         currentStudentName = document.getElementById('studentName').value.trim();
@@ -358,7 +350,7 @@
 
     function renderStep0() {
         const container = document.getElementById('questionContainer');
-        container.innerHTML = "<h1>Dein Fokus</h1><p class='subtitle'>Bewerte, wie relevant diese sechs Oberthemen allgemein für dich sind.</p>";
+        container.innerHTML = "<h1>Dein Fokus</h1><p class='subtitle'>Bewerte, wie relevant diese fünf Oberthemen allgemein für dich sind.</p>";
         
         topics.forEach((t, index) => {
             container.innerHTML += createTileHTML(`topic_${t.id}`, t.name, t.id, index * 0.1);
@@ -439,80 +431,133 @@
 
     function startPolling() {
         const timer = setInterval(async () => {
-            // Hole alle Daten, nach ID aufsteigend sortiert
             const { data, error } = await db.from('submissions').select('*').order('id', { ascending: true });
             if (error || !data) return;
 
             document.getElementById('countDisplay').innerText = `Bereits bereit: ${data.length} / ${TARGET_STUDENT_COUNT}`;
 
-            if (data.length >= TARGET_STUDENT_COUNT) {
-                
-                // 1. Prüfen, ob für MICH schon ein Ergebnis vorliegt
-                const me = data.find(s => s.name === currentStudentName);
-                if (me && me.assigned_group) {
-                    clearInterval(timer);
-                    document.getElementById('view-waiting').classList.add('hidden');
-                    document.getElementById('view-result').classList.remove('hidden');
-                    document.getElementById('groupName').innerText = me.assigned_group;
-                    return; // Stoppe hier, wir sind fertig!
-                }
+            // 1. Habe ich schon ein Ergebnis?
+            const me = data.find(s => s.name === currentStudentName);
+            if (me && me.assigned_group) {
+                clearInterval(timer);
+                document.getElementById('view-waiting').classList.add('hidden');
+                document.getElementById('view-result').classList.remove('hidden');
+                document.getElementById('groupName').innerText = me.assigned_group;
+                return;
+            }
 
-                // 2. Schauen, ob IRGENDJEMAND schon eine Gruppe hat (dann rechnet gerade ein anderes Handy)
+            if (data.length >= TARGET_STUDENT_COUNT) {
                 const someoneHasGroup = data.some(s => s.assigned_group !== null);
 
-                // 3. Wenn niemand eine Gruppe hat und wir noch nicht rechnen -> Start!
+                // 2. Erste Berechnung — niemand hat bisher eine Gruppe
                 if (!someoneHasGroup && !isCalculating) {
-                    isCalculating = true; // Sperre aktivieren
+                    isCalculating = true;
                     await calculateAssignments(data);
+                }
+                // FIX 4: Spätankömmling — andere haben schon Gruppen, ich nicht
+                else if (someoneHasGroup && me && !me.assigned_group && !isCalculating) {
+                    isCalculating = true;
+                    await assignLatecomer(me, data);
                 }
             }
         }, 3000);
+    }
+
+    // Helper: gültige Topic-IDs (1..5)
+    const validTopicIds = topics.map(t => t.id);
+
+    // Helper: erstellt Präferenzliste aus scoresObj (filtert ungültige IDs raus)
+    function buildPreferences(scoresObj) {
+        return Object.entries(scoresObj)
+            .map(e => [parseInt(e[0]), e[1]])
+            .filter(e => validTopicIds.includes(e[0]))
+            .sort((a, b) => b[1] - a[1])
+            .map(e => e[0]);
     }
 
     async function calculateAssignments(allStudents) {
         try {
             const numTopics = topics.length;
             const maxPerGroup = Math.ceil(allStudents.length / numTopics);
+            const minPerGroup = Math.floor(allStudents.length / numTopics);
             
-            // 1. Wunschliste für jeden erstellen
+            // 1. Wunschliste pro Schüler erstellen
             allStudents.forEach(s => {
-                // Zur Sicherheit: Objekt sicher parsen, falls Supabase es als String liefert
                 s.scoresObj = typeof s.scores === 'string' ? JSON.parse(s.scores) : s.scores;
-                s.pref = Object.entries(s.scoresObj).sort((a,b) => b[1] - a[1]).map(e => parseInt(e[0]));
-                s.curG = s.pref[0] || 1;
+                s.pref = buildPreferences(s.scoresObj);
+                s.curG = s.pref[0] || topics[0].id;
             });
 
-            // 2. Ausgleich: Verschiebe Leute, bis Gruppen gleich groß sind
-            for(let i=0; i < 50; i++) {
-                let overflow = allStudents.filter(s => allStudents.filter(x => x.curG === s.curG).length > maxPerGroup);
-                if(overflow.length === 0) break;
+            const groupSize = (gId) => allStudents.filter(x => x.curG === gId).length;
+            
+            // FIX 2: Findet die *aktuell* nächste freie Präferenz (nicht hartcodiert pref[1])
+            const findNextAvailable = (student) => {
+                const currentIdx = student.pref.indexOf(student.curG);
+                for (let p = currentIdx + 1; p < student.pref.length; p++) {
+                    if (groupSize(student.pref[p]) < maxPerGroup) {
+                        return student.pref[p];
+                    }
+                }
+                return null;
+            };
 
-                overflow.sort((a,b) => {
-                    // Punktzahlen aus dem geparsten Objekt lesen
-                    let scoreA_best = a.scoresObj[a.curG] || 0;
-                    let scoreA_next = a.scoresObj[a.pref[1]] || 0;
-                    let scoreB_best = b.scoresObj[b.curG] || 0;
-                    let scoreB_next = b.scoresObj[b.pref[1]] || 0;
-                    
-                    return (scoreA_best - scoreA_next) - (scoreB_best - scoreB_next);
+            // 2. Phase A: Überfüllte Gruppen abbauen (max einhalten)
+            for (let i = 0; i < 200; i++) {
+                const overflow = allStudents.filter(s => groupSize(s.curG) > maxPerGroup);
+                if (overflow.length === 0) break;
+
+                overflow.sort((a, b) => {
+                    const aNext = findNextAvailable(a);
+                    const bNext = findNextAvailable(b);
+                    const aBest = a.scoresObj[a.curG] || 0;
+                    const aNextScore = aNext !== null ? (a.scoresObj[aNext] || 0) : -1;
+                    const bBest = b.scoresObj[b.curG] || 0;
+                    const bNextScore = bNext !== null ? (b.scoresObj[bNext] || 0) : -1;
+                    return (aBest - aNextScore) - (bBest - bNextScore);
                 });
 
-                let candidate = overflow[0];
-                for(let p=1; p < numTopics; p++) {
-                    let nextG = candidate.pref[p];
-                    if(allStudents.filter(x => x.curG === nextG).length < maxPerGroup) {
-                        candidate.curG = nextG;
+                const candidate = overflow[0];
+                const nextG = findNextAvailable(candidate);
+                if (nextG !== null) {
+                    candidate.curG = nextG;
+                } else {
+                    // Notfall: irgendeine Gruppe mit Platz
+                    const anyAvailable = topics.find(t => groupSize(t.id) < maxPerGroup);
+                    if (anyAvailable) {
+                        candidate.curG = anyAvailable.id;
+                    } else {
                         break;
                     }
                 }
             }
 
-            // 3. Ergebnisse in Supabase speichern
-            for(let s of allStudents) {
+            // FIX 3: Phase B — leere/unterbesetzte Gruppen auffüllen
+            for (let i = 0; i < 200; i++) {
+                const underfilled = topics.filter(t => groupSize(t.id) < minPerGroup);
+                if (underfilled.length === 0) break;
+
+                const targetT = underfilled[0];
+                // Kandidaten: Schüler in Gruppen, die mehr als min haben
+                const candidates = allStudents.filter(s => 
+                    s.curG !== targetT.id && groupSize(s.curG) > minPerGroup
+                );
+                if (candidates.length === 0) break;
+
+                // Wähle den mit kleinstem Verlust beim Wechsel zur Zielgruppe
+                candidates.sort((a, b) => {
+                    const aLoss = (a.scoresObj[a.curG] || 0) - (a.scoresObj[targetT.id] || 0);
+                    const bLoss = (b.scoresObj[b.curG] || 0) - (b.scoresObj[targetT.id] || 0);
+                    return aLoss - bLoss;
+                });
+
+                candidates[0].curG = targetT.id;
+            }
+
+            // 3. Ergebnisse speichern
+            for (let s of allStudents) {
                 const topicObj = topics.find(t => t.id === s.curG);
                 const topicName = topicObj ? topicObj.name : "Unbekannt";
                 
-                // Speicher-Update: Versucht erst über ID, sonst über Name (falls die ID-Spalte fehlt)
                 if (s.id) {
                     await db.from('submissions').update({ assigned_group: topicName }).eq('id', s.id);
                 } else {
@@ -522,14 +567,50 @@
         } catch (e) {
             console.error("Fehler bei der Berechnung:", e);
         } finally {
-            // Nach 5 Sekunden die Rechen-Sperre wieder freigeben
+            setTimeout(() => { isCalculating = false; }, 5000);
+        }
+    }
+
+    // FIX 4: Späterer Schüler wird in seine beste freie Gruppe gepackt
+    async function assignLatecomer(me, allData) {
+        try {
+            const myScores = typeof me.scores === 'string' ? JSON.parse(me.scores) : me.scores;
+            const myPref = buildPreferences(myScores);
+
+            // Aktuelle Gruppengrößen anhand der Namen (assigned_group ist der Topic-Name)
+            const groupCount = (topicName) => 
+                allData.filter(s => s.assigned_group === topicName).length;
+            
+            const numTopics = topics.length;
+            // Etwas Spielraum für Spätankömmlinge
+            const flexMax = Math.ceil(allData.length / numTopics);
+            
+            let chosenTopic = null;
+            for (const topicId of myPref) {
+                const t = topics.find(top => top.id === topicId);
+                if (t && groupCount(t.name) < flexMax) {
+                    chosenTopic = t;
+                    break;
+                }
+            }
+            
+            // Fallback: kleinste Gruppe nehmen
+            if (!chosenTopic) {
+                chosenTopic = topics.reduce((min, t) => 
+                    groupCount(t.name) < groupCount(min.name) ? t : min, topics[0]);
+            }
+            
+            await db.from('submissions').update({ assigned_group: chosenTopic.name }).eq('id', me.id);
+        } catch (e) {
+            console.error("Fehler bei Spätankömmling-Zuweisung:", e);
+        } finally {
             setTimeout(() => { isCalculating = false; }, 5000);
         }
     }
 
     function updateProgressBar(percent) { 
         const bar = document.getElementById('progressBar');
-        if(bar) bar.style.width = percent + "%"; 
+        if (bar) bar.style.width = percent + "%"; 
     }
 </script>
 
